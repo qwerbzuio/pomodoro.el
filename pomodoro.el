@@ -129,42 +129,47 @@ Formatted with `format-seconds'."
   (setq pomodoro-end-time (time-add (current-time) (list 0 (* minutes 60) 0))))
 
 (defun pomodoro-tick ()
-  (let ((time (round (float-time (time-subtract pomodoro-end-time (current-time))))))
-    (if (<= time 0)
-        (if (string= pomodoro-current-cycle pomodoro-work-cycle)
-            (progn
-              (incf pomodoros)
-              (let ((p (if (= 0 (mod pomodoros
-                                     pomodoro-nth-for-longer-break))
-                           (cons pomodoro-long-break-time
-                                 pomodoro-long-break-start-message)
-                         (cons pomodoro-break-time
-                               pomodoro-break-start-message))))
-                (if pomodoro-play-sounds
-                    (play-pomodoro-break-sound))
-		(if pomodoro-desktop-notification
-		    (notifications-notify :body (cdr p)))
-                (cond ((yes-or-no-p (cdr p))
-                       (setq pomodoro-current-cycle pomodoro-break-cycle)
-                       (pomodoro-set-end-time (car p)))
-                      (t
-                       (decf pomodoros)
-                       (pomodoro-set-end-time pomodoro-extra-time)))))
-          (if pomodoro-play-sounds
-              (play-pomodoro-work-sound))
-	  (if pomodoro-desktop-notification
-	      (notifications-notify :body pomodoro-work-start-message))
-          (if (not (yes-or-no-p pomodoro-work-start-message))
-              (pomodoro-set-end-time pomodoro-extra-time)
-            (setq pomodoro-current-cycle pomodoro-work-cycle)
-            (pomodoro-set-end-time pomodoro-work-time))))
-    (setq pomodoro-mode-line-string
-          (format (concat "%s"
-						  (when pomodoro-show-number
-							(format "%s-" (+ 1 (mod pomodoros pomodoro-nth-for-longer-break))))
-						  (format-seconds pomodoro-time-format time))
-                  pomodoro-current-cycle))
-    (force-mode-line-update)))
+  (condition-case nil
+      (let ((time (round (float-time (time-subtract pomodoro-end-time (current-time))))))
+	(if (<= time 0)
+            (if (string= pomodoro-current-cycle pomodoro-work-cycle)
+		(progn
+		  (incf pomodoros)
+		  (let ((p (if (= 0 (mod pomodoros
+					 pomodoro-nth-for-longer-break))
+                               (cons pomodoro-long-break-time
+                                     pomodoro-long-break-start-message)
+                             (cons pomodoro-break-time
+				   pomodoro-break-start-message))))
+                    (if pomodoro-play-sounds
+			(play-pomodoro-break-sound))
+		    (if pomodoro-desktop-notification
+			(notifications-notify :body (cdr p)))
+                    (cond ((yes-or-no-p (cdr p))
+			   (setq pomodoro-current-cycle pomodoro-break-cycle)
+			   (pomodoro-set-end-time (car p)))
+			  (t
+			   (decf pomodoros)
+			   (pomodoro-set-end-time pomodoro-extra-time)))))
+              (if pomodoro-play-sounds
+		  (play-pomodoro-work-sound))
+	      (if pomodoro-desktop-notification
+		  (notifications-notify :body pomodoro-work-start-message))
+              (if (not (yes-or-no-p pomodoro-work-start-message))
+		  (pomodoro-set-end-time pomodoro-extra-time)
+		(setq pomodoro-current-cycle pomodoro-work-cycle)
+		(pomodoro-set-end-time pomodoro-work-time))))
+	(setq pomodoro-mode-line-string
+              (format (concat "%s"
+			      (when pomodoro-show-number
+				(format "%s-" (+ 1 (mod pomodoros pomodoro-nth-for-longer-break))))
+			      (format-seconds pomodoro-time-format time))
+                      pomodoro-current-cycle))
+	(force-mode-line-update))
+    (quit
+     (pomodoro-pause)
+     (decf pomodoros)
+     (message "Received quit signal, suspending pomodoro. When you're ready to go on, call `pomodoro-resume'."))))
 
 ;;;###autoload
 (defun pomodoro-start (arg)
