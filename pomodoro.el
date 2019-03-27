@@ -91,6 +91,11 @@
   :group 'pomodoro
   :type 'string)
 
+(defcustom pomodoro-stop-message "Great, you're done with work!"
+  "Message to show when stopping pomodoro"
+  :group 'pomodoro
+  :type 'string)
+
 (defcustom pomodoro-work-cycle "w"
   "String to display in mode line for a work cycle"
   :group 'pomodoro
@@ -214,7 +219,8 @@ Formatted with `format-seconds'."
   (setq pomodoro-mode-line-string "")
   (setq pomodoro-current-cycle pomodoro-work-cycle)
   (force-mode-line-update)
-  (setq pomodoro-state nil))
+  (setq pomodoro-state nil)
+  (message pomodoro-stop-message))
 
 (defun play-pomodoro-sound (sound)
   "Play sound for pomodoro"
