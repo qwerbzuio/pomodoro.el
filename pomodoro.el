@@ -123,6 +123,7 @@ Formatted with `format-seconds'."
 (defvar pomodoro-mode-line-string "")
 (defvar pomodoro-end-time) ; the data type should be time instead of integer
 (defvar pomodoro-time-remaining) ;used to pause pomodoro timers
+(defvar pomodoro-state nil "May be one of (nil 'running 'paused), where nil means not active / stopped")
 
 (defun pomodoro-set-end-time (minutes)
   "Set how long the pomodoro timer should run"
@@ -174,34 +175,40 @@ Formatted with `format-seconds'."
 ;;;###autoload
 (defun pomodoro-start (arg)
   (interactive "P")
-  (let* ((timer (or (if (listp arg)
-                        (car arg))
-                    arg
-                    pomodoro-work-time)))
-    (setq pomodoro-current-cycle pomodoro-work-cycle)
-    (when pomodoro-timer
-      (cancel-timer pomodoro-timer))
-    (setq pomodoro-work-time timer)
-    (pomodoro-set-end-time pomodoro-work-time)
-    (setq pomodoro-timer (run-with-timer 0 1 'pomodoro-tick))))
+  (if (eq pomodoro-state nil)
+      (let* ((timer (or (if (listp arg)
+                            (car arg))
+                        arg
+                        pomodoro-work-time)))
+        (setq pomodoro-current-cycle pomodoro-work-cycle)
+        (when pomodoro-timer
+          (cancel-timer pomodoro-timer))
+        (setq pomodoro-work-time timer)
+        (pomodoro-set-end-time pomodoro-work-time)
+        (setq pomodoro-timer (run-with-timer 0 1 'pomodoro-tick))
+        (setq pomodoro-state 'running))
+    (error "Pomodoro is already running")))
 
 (defun pomodoro-pause ()
   (interactive)
   (cancel-timer pomodoro-timer)
   (setq pomodoro-time-remaining (round (float-time (time-subtract pomodoro-end-time (current-time)))))
-  (force-mode-line-update))
+  (force-mode-line-update)
+  (setq pomodoro-state 'paused))
 
 (defun pomodoro-resume ()
   (interactive)
   (setq pomodoro-end-time (time-add (current-time) (seconds-to-time pomodoro-time-remaining)))
-  (setq pomodoro-timer (run-with-timer 0 1 'pomodoro-tick))) 
+  (setq pomodoro-timer (run-with-timer 0 1 'pomodoro-tick))
+  (setq pomodoro-state 'running)) 
 
 (defun pomodoro-stop ()
   (interactive)
   (cancel-timer pomodoro-timer)
   (setq pomodoro-mode-line-string "")
   (setq pomodoro-current-cycle pomodoro-work-cycle)
-  (force-mode-line-update))
+  (force-mode-line-update)
+  (setq pomodoro-state nil))
 
 (defun play-pomodoro-sound (sound)
   "Play sound for pomodoro"
